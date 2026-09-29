@@ -8,38 +8,18 @@ typedef struct num_Z//un struct para tener numeros en Z
     num_N magnitud;
 }num_Z;
 
+typedef struct num_Q//un struct para tener numeros en fracciones reducidas lo más posibles
+{
+    num_N numerador;//numerador(arriba)
+    num_N denominador;//denominador(abajo)
+    num_N signo;
+}num_Q;
+
 typedef struct num_R//un struct para tener numeros reales(decimales)
 {
     num_Z valor;//valor sin decimal
     num_N pos_decimal;//cantidad de digitos despues del punto
 }num_R;
-
-typedef struct num_Q//un struct para tener numeros en fracciones reducidas lo más posibles
-{
-    num_R numerador;//numerador(arriba)
-    num_R denominador;//denominador(abajo)
-    num_Q()
-    {   
-        if(numerador.pos_decimal > denominador.pos_decimal)
-        {
-
-        }
-        else if (numerador.pos_decimal < denominador.pos_decimal)
-        {
-
-        }
-        num_N a,b;
-        while (a != b)
-        {
-            if (a > b)
-                a = rest_N(a,b);
-            else
-                b = rest_N(b,a);
-        }
-        
-    }
-}num_Q;
-
 
 //----------FUNCIONES PARA N------------
 
@@ -245,6 +225,46 @@ num_Z pot_Z(num_Z a, num_N b)
     }
     
     return resultado;    
+}
+
+//---------------FUNCIONES PARA Q--------------
+
+//funcion auxiliar para simplificar la expresion a/b para reales
+num_Q simplificar_Q(num_R a, num_R b)
+{
+    num_Q resultado;
+    if(a.pos_decimal > b.pos_decimal)//para igualar los posdecimales
+    {
+        b.valor.magnitud = mult_N(b.valor.magnitud, pot_N(10, (a.pos_decimal-b.pos_decimal)));
+    }
+    else if (a.pos_decimal < b.pos_decimal)
+    {
+        a.valor.magnitud = mult_N(a.valor.magnitud, pot_N(10, (b.pos_decimal-a.pos_decimal)));
+    }
+
+    num_N x = a.valor.magnitud;
+    num_N y = b.valor.magnitud;
+    num_N r;
+
+    while (x != y)
+    {
+        if (x > y)
+        {
+            x = rest_N(x,y);
+        }
+        else
+        {
+            y = rest_N(y,x);
+        }
+    }
+    
+    b.valor.magnitud = div_N(b.valor.magnitud, x , &r);
+    a.valor.magnitud = div_N(a.valor.magnitud, x , &r);
+
+    resultado.numerador = a.valor.magnitud;
+    resultado.denominador = b.valor.magnitud;
+    resultado.signo = mult_Z({1, a.valor.signo},{1, b.valor.signo}).signo;
+    return resultado;
 }
 
 //---------------FUNCIONES PARA R--------------
