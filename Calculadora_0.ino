@@ -4,15 +4,15 @@ typedef unsigned int num_N;//una variable entero si singo(Naturales)
 
 typedef struct num_Z//un struct para tener numeros en Z
 {
-    num_N signo;//0 = -; 1 = +;
     num_N magnitud;
+    num_N signo;//0 = -; 1 = +;
 }num_Z;
 
 typedef struct num_Q//un struct para tener numeros en fracciones reducidas lo más posibles
 {
     num_N numerador;//numerador(arriba)
     num_N denominador;//denominador(abajo)
-    num_N signo;
+    num_N signo;//0 = -; 1 = +;
 }num_Q;
 
 typedef struct num_R//un struct para tener numeros reales(decimales)
@@ -64,7 +64,9 @@ num_N mult_N(num_N a, num_N b)
 num_N div_N(num_N a, num_N b, num_N *r)
 {
     num_N resultado = 0;
-    num_N dif;
+    num_N i = 1;
+    num_N aux1 = b;
+    num_N aux2 = 1;
 
     if(b == 0)//verificamos que b sea diferente de 0
     {
@@ -72,15 +74,21 @@ num_N div_N(num_N a, num_N b, num_N *r)
     }
     else
     {
-        while ((dif=rest_N(a,b)) > 0)//mientras que la diferencia entre a y b sea mayor que cero ejecutar
+        while (a>=b)//mientras que a>=b, dividimos
         {
-            a = dif;//a será la diferencia entre a y b
-            resultado++;//sumar al contador en 1
-        }
-        if (a == b)// si resulta que el residuo es igual que b
-        {
-            a = 0;//restar una vez más
-            resultado++;
+            aux2 = mult_N(aux1, 2);//obtenemos el multiplo siguiente
+            while (a >= aux2)
+            {
+                i = mult_N(i,2);//obtenemos i = 2^n , donde n es la cantidad de veces que recorrimos el bucle
+                aux1 = aux2;//obtenemos b*i
+                aux2 = mult_N(aux1, 2);
+            }//mientras que a sea mayor que un multiplo de b 
+
+            resultado += i;//sumamos el multiplo de b
+            a = rest_N(a, aux1);//restamos
+            //regresamos a los valores
+            aux1 = b;
+            i = 1;
         }
     }
     
@@ -229,10 +237,14 @@ num_Z pot_Z(num_Z a, num_N b)
 
 //---------------FUNCIONES PARA Q--------------
 
-//funcion auxiliar para simplificar la expresion a/b para reales
+//funcion auxiliar para simplificar la expresion a/b a una fracion(N y D pertenecen a N y a y b pertenecen a R)
 num_Q simplificar_Q(num_R a, num_R b)
 {
     num_Q resultado;
+    if(b.valor.magnitud == 0 || a.valor.magnitud == 0)
+    {
+        return {0,0,1};
+    }
     if(a.pos_decimal > b.pos_decimal)//para igualar los posdecimales
     {
         b.valor.magnitud = mult_N(b.valor.magnitud, pot_N(10, (a.pos_decimal-b.pos_decimal)));
@@ -325,29 +337,97 @@ num_R mult_R(num_R a, num_R b)
 num_R div_R(num_R a, num_R b)
 {
     num_R resultado;
-    num_N resolucion = 4;//cantidad de decimales del resultado(+resolucion, + precision)
-    num_N r;
-    a.valor.magnitud = mult_N(a.valor.magnitud, pot_N(10, resolucion));//a a/b le multiplico (10^r)/(10^r), entonces divido ((a*10^r)/b)*10^-r, entonces pos_deci=r
-    resultado.valor = div_Z(a.valor, b.valor, &r);//divido
+    num_N resolucion = 9;//cantidad de decimales del resultado(+resolucion, + precision)
+    num_N i = 0;
+    num_N r;//optimizamos calculando decimal por decimal usando el residuo para cada division
 
-    resultado.pos_decimal = 4;//regreso su pos_deci
+    //obtenemos la division, nos da, la parte entera y el residuo
+    resultado.valor.magnitud = div_N(a.valor.magnitud, b.valor.magnitud, &r);
+    if(b.valor.magnitud!=1)
+    {
+        while (i<resolucion)
+        {
+            if(r==0) break;//si el residuo es 0 entonces no hacer nada
 
+            r = mult_N(r, 10);//a a/b le multiplico (10^r)/(10^r), entonces divido ((a*10^r)/b)*10^-r, entonces pos_deci=r
+            resultado.valor.magnitud = mult_N(resultado.valor.magnitud, 10);//dezplazamos el decimal a la derecha para sumarle la parte entera de el resultado de r/b
+            resultado.valor.magnitud += div_N(r, b.valor.magnitud, &r);//divido r/b y repito
+            i++;
+        }
+    }
+    
+    a.pos_decimal += i;//regreso su pos_deci
     if (b.pos_decimal>=a.pos_decimal)//caso: su pos_deci de b > pos_deci de a, el pos_deci de b pasa como 10^pos_deci
     {
-        resultado.valor.magnitud = mult_N(resultado.valor.magnitud, pot_N(10, rest_N(b.pos_decimal, a.pos_decimal)));
+        resultado.pos_decimal = 0;
+        resultado.valor.magnitud = mult_N(resultado.valor.magnitud, pot_N(10, rest_N(b.pos_decimal, a.pos_decimal)));//como la diferencia es posi, entonces estamos añadiendo 0 a la derecha
     }
     else//para el caso contrario
     {
-        resultado.pos_decimal += rest_N(a.pos_decimal, b.pos_decimal);
+        resultado.pos_decimal = rest_N(a.pos_decimal, b.pos_decimal);//como la diferencia es negativa, entonces dezplazamos la coma a la izquierda, que equivale a pos_deci
     }
+    //obtenemos el signo
+    resultado.valor.signo = mult_Z({1, a.valor.signo}, {1, b.valor.signo}).signo;
+
+    return resultado;
+}
+
+//funcion aux:
+//funcion potencia para R (a^b) con b pertence a N
+num_R aux_pot_R(num_R a, num_N b)
+{
+    num_R resultado;
+    //separamos a (a*10^-pos)^b=a^b*10^-pos*b
+    resultado.valor = pot_Z(a.valor, b);
+    resultado.pos_decimal = mult_N(a.pos_decimal, b);
     
     return resultado;
 }
 
-//función raiz enesima para R (a^(1/b))
-num_R raiz_enesima_R(num_R a, num_R b)
+//Función aux para pot_R
+//función raiz enesima para R (a^(1/b))con b pertenece a Z
+num_R raiz_enesima_R(num_R a, num_Z b)
 {
+    num_R resultado;
+    num_R x0 = a;//creamos el x0=a, para que esté, relativamente cerca de a^1/b
+    num_N i = 1;
+    //variables auxiliares
+    num_R aux1;
+    num_R aux2;
 
+
+
+    if(b.signo==0)//si b es negativo, se simplifica el x0^-b a x0^b.magnitud
+    {
+        x0.pos_decimal = a.pos_decimal + 4;
+        while (i<=10)
+        {
+            aux1 = mult_R(a,aux_pot_R(x0, b.magnitud));
+            aux2 = rest_R({b,0},{{1,1},0});
+            aux1 = sum_R(aux2, aux1);
+            aux2 = mult_R(x0,aux1);
+            x0 = div_R(aux2,{b,0});
+
+            i++;
+        }
+    }
+    else
+    {
+        while (i<=10)
+        {
+            aux1 = aux_pot_R(x0, b.magnitud);
+            aux2 = div_R({{1,1},0}, aux1); 
+            aux1 = mult_R(a, aux2);
+            aux2 = rest_R({b,0},{{1,1},0});
+            aux1 = sum_R(aux2, aux1);
+            aux2 = mult_R(x0,aux1);
+            x0 = div_R(aux2,{b,0});
+
+            i++;
+        }
+    }
+    
+    return x0;
 }
 
 //------------INPUT/OUTPUT------------
