@@ -13,7 +13,7 @@ Calculadora matemática desarrollada desde cero en C/C++
 - [x] Resta ##optimizar
 - [x] Multiplicación
 - [x] División ##optimizar
-- [ ] Potenciación
-- [ ] Raíz
+- [X] Potenciación
+- [X] Raíz
 - [ ] Logaritmo
 - [ ] Funciones trigonométricas
